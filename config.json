@@ -33,10 +33,16 @@
       "extract": {
         "final_order_number": "request.order_number"
       },
-      "print_output": {
-        "message": "Final available order number",
-        "path": "request.order_number"
-      },
+      "print_output": [
+        {
+          "message": "Final available order number: {{value}}",
+          "env_var": "final_order_number"
+        },
+        {
+          "message": "Order ID in response: {{value}}",
+          "path": "request.order_number"
+        }
+      ],
       "retries": 10,
       "timeout": 5,
       "duration_limit": 120
@@ -54,10 +60,16 @@
         "path": "status",
         "equals": "processed"
       },
-      "print_output": {
-        "message": "Processing complete for order",
-        "path": "data.process_id"
-      },
+      "print_output": [
+        {
+          "message": "Processing complete for order: {{value}}",
+          "env_var": "final_order_number"
+        },
+        {
+          "message": "Process ID returned: {{value}}",
+          "path": "data.process_id"
+        }
+      ],
       "retries": 3,
       "timeout": 10,
       "duration_limit": 180

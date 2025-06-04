@@ -86,6 +86,21 @@ class APIRunner:
         except (KeyError, TypeError):
             return None
 
+    def print_outputs(self, print_output_config, response_json):
+        for item in print_output_config:
+            message_template = item.get("message", "")
+            path = item.get("path")
+            env_var = item.get("env_var")
+
+            value = None
+            if path:
+                value = self.get_nested_value(response_json, path)
+            elif env_var:
+                value = self.variables.get(env_var)
+
+            message = message_template.replace("{{value}}", str(value))
+            print(message)
+
     def make_request(self, step_name):
         step = self.config['api_calls'][step_name]
         system = step.get('system')
@@ -102,7 +117,7 @@ class APIRunner:
         timeout = step.get('timeout', 10)
         duration_limit = step.get('duration_limit', 300)
         success_condition = step.get('success_condition')
-        print_output = step.get('print_output')
+        print_output = step.get('print_output', [])
         method = step.get('method', 'GET').upper()
 
         start_time = datetime.now()
@@ -142,10 +157,7 @@ class APIRunner:
                         if extract:
                             self.extract_variables(extract, response_json)
                         if print_output:
-                            message = print_output.get("message", "")
-                            value_path = print_output.get("path")
-                            value = self.get_nested_value(response_json, value_path) if value_path else None
-                            print(f"{message}: {value}")
+                            self.print_outputs(print_output, response_json)
                         return response
                     else:
                         print(f"Success condition not met for {step_name}.")
@@ -154,10 +166,7 @@ class APIRunner:
                     if extract:
                         self.extract_variables(extract, response_json)
                     if print_output:
-                        message = print_output.get("message", "")
-                        value_path = print_output.get("path")
-                        value = self.get_nested_value(response_json, value_path) if value_path else None
-                        print(f"{message}: {value}")
+                        self.print_outputs(print_output, response_json)
                     return response
 
             except requests.RequestException as e:
