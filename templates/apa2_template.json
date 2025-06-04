@@ -1,0 +1,6 @@
+{
+  "lookup_id": "{{ resource_id }}",
+  "details": {
+    "user_info": "static"
+  }
+}
