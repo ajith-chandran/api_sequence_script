@@ -4,75 +4,76 @@
     "region": "us-east-1",
     "auth_token": "secret-token"
   },
+  "generators": {
+    "order_number": {
+      "type": "pattern",
+      "pattern": "##-##############"
+    },
+    "alpha_code": {
+      "type": "alphanumeric",
+      "length": 26
+    }
+  },
   "api_calls": {
     "APA1": {
       "system": "OC",
-      "endpoint": "/api/{{ region }}/resource1",
-      "method": "POST",
-      "headers": {
-        "Authorization": "Bearer {{ auth_token }}",
-        "Content-Type": "application/json"
-      },
-      "template": "templates/apa1_template.json",
-      "extract": {
-        "resource_id": "data.id"
-      },
-      "success_condition": {
-        "path": "data.id",
-        "exists": true
-      },
-      "retries": 3,
-      "timeout": 10,
-      "duration_limit": 300
-    },
-    "APA2": {
-      "system": "OCE",
-      "endpoint": "/api/{{ region }}/resource2/{{ resource_id }}",
+      "endpoint": "/api/{{ region }}/orders/{{ order_number }}",
       "method": "GET",
       "headers": {
         "Authorization": "Bearer {{ auth_token }}",
         "Accept": "application/json"
       },
+      "dynamic_variables": {
+        "order_number": "order_number"
+      },
       "success_condition": {
-        "path": "status",
-        "equals": "completed"
+        "path": "exists",
+        "equals": false
       },
       "extract": {
-        "completion_time": "metadata.completed_at"
+        "final_order_number": "request.order_number"
       },
-      "retries": 5,
-      "timeout": 8,
+      "print_output": {
+        "message": "Final available order number",
+        "path": "request.order_number"
+      },
+      "retries": 10,
+      "timeout": 5,
+      "duration_limit": 120
+    },
+    "APA2": {
+      "system": "OCE",
+      "endpoint": "/api/{{ region }}/process/{{ final_order_number }}",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer {{ auth_token }}",
+        "Content-Type": "application/json"
+      },
+      "template": "templates/apa2_template.json",
+      "success_condition": {
+        "path": "status",
+        "equals": "processed"
+      },
+      "print_output": {
+        "message": "Processing complete for order",
+        "path": "data.process_id"
+      },
+      "retries": 3,
+      "timeout": 10,
       "duration_limit": 180
     }
   },
   "sequences": {
-    "sequence1": ["APA1", "APA2"],
-    "sequence2": ["APA2", "APA1"]
+    "sequence1": ["APA1", "APA2"]
   },
   "environments": {
     "test2": {
       "OC": "https://test2.oc.example.com",
-      "CG": "https://test2.cg.example.com",
-      "OG": "https://test2.og.example.com",
       "OCE": "https://test2.oce.example.com"
-    },
-    "test3": {
-      "OC": "https://test3.oc.example.com",
-      "CG": "https://test3.cg.example.com",
-      "OG": "https://test3.og.example.com",
-      "OCE": "https://test3.oce.example.com"
     },
     "QA2": {
       "OC": "https://qa2.oc.example.com",
-      "CG": "https://qa2.cg.example.com",
-      "OG": "https://qa2.og.example.com",
       "OCE": "https://qa2.oce.example.com"
-    },
-    "QA3": {
-      "OC": "https://qa3.oc.example.com",
-      "CG": "https://qa3.cg.example.com",
-      "OG": "https://qa3.og.example.com",
-      "OCE": "https://qa3.oce.example.com"
     }
   }
 }
