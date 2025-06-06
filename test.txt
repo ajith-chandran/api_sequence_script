@@ -1,0 +1,37 @@
+public static Set<String> getMatchingProductIDs(OgSourceData ogSourceData, List<String> targetPhoneNumbers, String offeringType) {
+        if (ogSourceData == null || 
+            ogSourceData.getPNOResponse() == null || 
+            ogSourceData.getPNOResponse().getProductOrderItem() == null) {
+            return new HashSet<>();
+        }
+
+        return ogSourceData.getPNOResponse().getProductOrderItem().stream()
+                .filter(item -> isMatchingOffering(item, offeringType))
+                .filter(item -> hasMatchingPhoneNumber(item, targetPhoneNumbers))
+                .map(ProductOrderItem::getID)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+    }
+
+    private static boolean isMatchingOffering(ProductOrderItem item, String offeringType) {
+        ProductOffering offering = item.getProductOffering();
+        return offering != null && offeringType.equals(offering.getType());
+    }
+
+    private static boolean hasMatchingPhoneNumber(ProductOrderItem outerItem, List<String> targetPhoneNumbers) {
+        List<ProductOrderItem> nestedItems = outerItem.getProductOrderItem();
+        if (nestedItems == null || nestedItems.isEmpty()) return false;
+
+        for (ProductOrderItem nestedItem : nestedItems) {
+            Product product = nestedItem.getProduct();
+            if (product == null || product.getProductCharacteristic() == null) continue;
+
+            for (ProductCharacteristic characteristic : product.getProductCharacteristic()) {
+                if ("new phone number".equals(characteristic.getName()) &&
+                        targetPhoneNumbers.contains(characteristic.getValue())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
