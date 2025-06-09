@@ -17,30 +17,32 @@
   "api_calls": {
     "APA1": {
       "system": "OC",
-      "endpoint": "/api/{{ region }}/orders/{{ order_number }}",
-      "method": "GET",
+      "endpoint": "/post",
+      "method": "POST",
+      "template": "templates/apa1_template.json",
       "headers": {
         "Authorization": "Bearer {{ auth_token }}",
-        "Accept": "application/json"
+        "Accept": "application/json",
+        "Customer": "{{ alpha_code }}"
       },
       "dynamic_variables": {
-        "order_number": "order_number"
+        "order_number": "json.lookup_id"
       },
       "success_condition": {
-        "path": "exists",
-        "equals": false
+        "path": "json.lookup_id",
+        "exists": true
       },
       "extract": {
-        "final_order_number": "request.order_number"
+        "final_order_number": "json.lookup_id"
       },
       "print_output": [
         {
           "message": "Final available order number: {{value}}",
-          "env_var": "final_order_number"
+          "path": "json.details.0.user_info"
         },
         {
           "message": "Order ID in response: {{value}}",
-          "path": "request.order_number"
+          "path": "json.details.1.user_info"
         }
       ],
       "retries": 10,
@@ -76,11 +78,11 @@
     }
   },
   "sequences": {
-    "sequence1": ["APA1", "APA2"]
+    "sequence1": ["APA1"]
   },
   "environments": {
     "test2": {
-      "OC": "https://test2.oc.example.com",
+      "OC": "https://postman-echo.com",
       "OCE": "https://test2.oce.example.com"
     },
     "QA2": {
