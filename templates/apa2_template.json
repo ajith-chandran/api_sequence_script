@@ -1,5 +1,5 @@
 {
-  "lookup_id": "{{ resource_id }}",
+  "lookup_id_1": "{{ final_order_number }}",
   "details": {
     "user_info": "static"
   }
