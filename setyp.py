@@ -9,6 +9,8 @@ REQUIRED_PACKAGES = [
     "jinja2"
 ]
 
+# Usage:  python3 APISequenceRunner.py sequence1 test2
+
 def check_python_version():
     print("Checking Python version...")
     if sys.version_info.major < REQUIRED_PYTHON_MAJOR or \
