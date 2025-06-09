@@ -50,8 +50,8 @@
       "duration_limit": 120
     },
     "APA2": {
-      "system": "OCE",
-      "endpoint": "/api/{{ region }}/process/{{ final_order_number }}",
+      "system": "OC",
+      "endpoint": "/post",
       "method": "POST",
       "headers": {
         "Authorization": "Bearer {{ auth_token }}",
@@ -59,8 +59,8 @@
       },
       "template": "templates/apa2_template.json",
       "success_condition": {
-        "path": "status",
-        "equals": "processed"
+        "path": "json.lookup_id_1",
+        "equals": "{{ final_order_number }}"
       },
       "print_output": [
         {
@@ -69,7 +69,7 @@
         },
         {
           "message": "Process ID returned: {{value}}",
-          "path": "data.process_id"
+          "path": "json.lookup_id_1"
         }
       ],
       "retries": 3,
@@ -78,7 +78,7 @@
     }
   },
   "sequences": {
-    "sequence1": ["APA1"]
+    "sequence1": ["APA1", "APA2"]
   },
   "environments": {
     "test2": {
