@@ -27,13 +27,10 @@ class APIRunner:
 
     def extract_variables(self, extract_config, response_json):
         for var_name, path in extract_config.items():
-            keys = path.split('.')
-            value = response_json
-            try:
-                for key in keys:
-                    value = value[key]
+            value = self.get_nested_value(response_json, path)
+            if value is not None:
                 self.variables[var_name] = value
-            except (KeyError, TypeError):
+            else:
                 print(f"Warning: Could not extract {var_name} from path {path}")
 
     def load_template(self, template_path):
@@ -42,17 +39,15 @@ class APIRunner:
             return f.read()
 
     def evaluate_success_condition(self, condition, response_json):
-        try:
-            keys = condition['path'].split('.')
-            value = response_json
-            for key in keys:
-                value = value[key]
-            if 'equals' in condition:
-                return value == condition['equals']
-            elif 'exists' in condition:
-                return condition['exists'] == (value is not None)
-        except (KeyError, TypeError):
+        value = self.get_nested_value(response_json, condition['path'])
+        print(response_json)
+        print(value)
+        if value is None:
             return False
+        if 'equals' in condition:
+            return value == condition['equals']
+        elif 'exists' in condition:
+            return condition['exists'] == (value is not None)
         return False
 
     def generate_value(self, spec):
@@ -81,9 +76,12 @@ class APIRunner:
         value = json_obj
         try:
             for key in keys:
-                value = value[key]
+                if isinstance(value, list) and key.isdigit():
+                    value = value[int(key)]
+                else:
+                    value = value[key]
             return value
-        except (KeyError, TypeError):
+        except (KeyError, IndexError, TypeError, ValueError):
             return None
 
     def print_outputs(self, print_output_config, response_json):
@@ -152,6 +150,7 @@ class APIRunner:
                 response_json = response.json()
 
                 if success_condition:
+                    print(success_condition)
                     if self.evaluate_success_condition(success_condition, response_json):
                         print(f"Success condition met for {step_name}.")
                         if extract:
