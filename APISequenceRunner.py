@@ -40,12 +40,11 @@ class APIRunner:
 
     def evaluate_success_condition(self, condition, response_json):
         value = self.get_nested_value(response_json, condition['path'])
-        print(response_json)
-        print(value)
         if value is None:
             return False
         if 'equals' in condition:
-            return value == condition['equals']
+            expected = self.render_template(condition['equals'])
+            return str(value) == expected
         elif 'exists' in condition:
             return condition['exists'] == (value is not None)
         return False
@@ -150,7 +149,6 @@ class APIRunner:
                 response_json = response.json()
 
                 if success_condition:
-                    print(success_condition)
                     if self.evaluate_success_condition(success_condition, response_json):
                         print(f"Success condition met for {step_name}.")
                         if extract:
