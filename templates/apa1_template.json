@@ -1,6 +1,10 @@
 {
-  "lookup_id": "{{ resource_id }}",
-  "details": {
+  "lookup_id": "{{ tenant_id }}",
+  "details": [{
     "user_info": "static"
+  },
+    {
+    "user_info": "dynamic"
   }
+  ]
 }
