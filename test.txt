@@ -5,6 +5,8 @@ import os
 import argparse
 import random
 import string
+import sys
+import threading
 from jinja2 import Template
 from datetime import datetime
 from colorama import Fore, Style, init as colorama_init
@@ -23,6 +25,14 @@ class APIRunner:
         self.variables = self.config.get('env', {}).copy()
         self.generators = self.config.get('generators', {})
         self.base_dir = base_dir
+        self.skip_retry_flag = False
+
+    def listen_for_skip(self):
+        print("Press 's' then Enter at any time to skip retries for the current step.")
+        while True:
+            if sys.stdin.read(1).lower() == 's':
+                self.skip_retry_flag = True
+                break
 
     def render_template(self, template_str):
         template = Template(template_str)
@@ -49,7 +59,7 @@ class APIRunner:
             result = False
             if 'equals' in single_condition:
                 expected = self.render_template(single_condition['equals'])
-                result = str(value) == expected
+                result = str(value).lower() == expected.lower()
             elif 'exists' in single_condition:
                 result = single_condition['exists'] == (value is not None)
             elif 'not_exists' in single_condition:
@@ -107,7 +117,9 @@ class APIRunner:
                 if isinstance(value, list) and key.isdigit():
                     value = value[int(key)]
                 else:
-                    value = value[key]
+                    lower_keys = {k.lower(): k for k in value.keys()} if isinstance(value, dict) else {}
+                    actual_key = lower_keys.get(key.lower(), key)
+                    value = value[actual_key]
             return value
         except (KeyError, IndexError, TypeError, ValueError):
             return None
@@ -159,12 +171,19 @@ class APIRunner:
         attempt = 0
         approx_total_attempts = (duration_limit // retry_delay) if retries is None else retries
 
+        self.skip_retry_flag = False
+        threading.Thread(target=self.listen_for_skip, daemon=True).start()
+
         while True:
             if retries is not None and attempt >= retries:
                 raise Exception(f"Failed to call {step_name} after {retries} retries")
 
             if retries is None and (datetime.now() - start_time).total_seconds() > duration_limit:
                 raise TimeoutError(f"Exceeded total duration limit for {step_name}")
+
+            if self.skip_retry_flag:
+                print(f"Skipping retries for {step_name} due to user request.")
+                raise Exception("User skipped retry")
 
             attempt += 1
             remaining = (retries - attempt) if retries is not None else (approx_total_attempts - attempt)
@@ -216,6 +235,12 @@ class APIRunner:
             except Exception as e:
                 if str(e) != "Condition not satisfied":
                     print(f"{Fore.RED}{step_name} failed due to unexpected error: {e}{Style.RESET_ALL}")
+                if self.skip_retry_flag:
+                    step_config = self.config['api_calls'].get(step_name, {})
+                    if not step_config.get("proceed_on_failure", False):
+                        raise
+                    else:
+                        break
 
             print(f"Waiting {retry_delay} seconds before retrying...")
             time.sleep(retry_delay)
