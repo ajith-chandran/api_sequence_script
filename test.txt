@@ -7,6 +7,9 @@ import random
 import string
 from jinja2 import Template
 from datetime import datetime
+from colorama import Fore, Style, init as colorama_init
+
+colorama_init(autoreset=True)
 
 class APIRunner:
     def __init__(self, sequence_name, environment):
@@ -103,7 +106,8 @@ class APIRunner:
             elif env_var:
                 value = self.variables.get(env_var)
 
-            message = message_template.replace("{{value}}", str(value))
+            colored_value = f"{Fore.GREEN}{value}{Style.RESET_ALL}"
+            message = message_template.replace("{{value}}", colored_value)
             print(message)
 
     def make_request(self, step_name):
@@ -131,6 +135,7 @@ class APIRunner:
 
         start_time = datetime.now()
         attempt = 0
+        approx_total_attempts = (duration_limit // retry_delay) if retries is None else retries
 
         while True:
             if retries is not None and attempt >= retries:
@@ -140,6 +145,7 @@ class APIRunner:
                 raise TimeoutError(f"Exceeded total duration limit for {step_name}")
 
             attempt += 1
+            remaining = (retries - attempt) if retries is not None else (approx_total_attempts - attempt)
 
             endpoint_template = self.render_template(step['endpoint'])
             url = base_url + endpoint_template
@@ -152,7 +158,6 @@ class APIRunner:
                 body = json.loads(rendered_body)
 
             try:
-                print(f"Calling {method} {url} (attempt {attempt})")
                 response = requests.request(
                     method,
                     url,
@@ -165,14 +170,15 @@ class APIRunner:
 
                 if success_condition:
                     if self.evaluate_success_condition(success_condition, response_json):
-                        print(f"Success condition met for {step_name}.")
+                        print(f"{Fore.GREEN}Success condition met for {step_name}.{Style.RESET_ALL}")
                         if extract:
                             self.extract_variables(extract, response_json)
                         if print_output:
                             self.print_outputs(print_output, response_json, body or {})
                         return response
                     else:
-                        print(f"Success condition not met for {step_name}.")
+                        retry_msg = success_condition.get("message", "Condition not satisfied")
+                        print(f"{step_name} - Attempt {attempt} failed: {retry_msg} | Remaining: {remaining} | Next retry in {retry_delay}s")
                         raise Exception("Condition not satisfied")
                 else:
                     if extract:
@@ -182,9 +188,10 @@ class APIRunner:
                     return response
 
             except requests.RequestException as e:
-                print(f"Request failed: {e}")
+                print(f"{Fore.RED}Request failed for {step_name}: {e}{Style.RESET_ALL}")
             except Exception as e:
-                print(f"Condition error: {e}")
+                if str(e) != "Condition not satisfied":
+                    print(f"{Fore.RED}{step_name} failed due to unexpected error: {e}{Style.RESET_ALL}")
 
             print(f"Waiting {retry_delay} seconds before retrying...")
             time.sleep(retry_delay)
