@@ -40,13 +40,13 @@ class APIRunner:
 
     def evaluate_success_condition(self, condition, response_json):
         value = self.get_nested_value(response_json, condition['path'])
-        if value is None:
-            return False
         if 'equals' in condition:
             expected = self.render_template(condition['equals'])
             return str(value) == expected
         elif 'exists' in condition:
             return condition['exists'] == (value is not None)
+        elif 'not_exists' in condition:
+            return condition['not_exists'] == (value is None)
         return False
 
     def generate_value(self, spec):
