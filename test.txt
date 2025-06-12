@@ -66,7 +66,8 @@ class APIRunner:
                 result = single_condition['not_exists'] == (value is None)
 
             if not result and 'message' in single_condition:
-                failed_messages.append(single_condition['message'])
+                rendered_msg = self.render_template(single_condition['message'])
+                failed_messages.append(rendered_msg)
             return result
 
         if isinstance(condition, dict) and 'conditions' in condition:
@@ -218,23 +219,22 @@ class APIRunner:
                 response.raise_for_status()
                 response_json = response.json()
 
+                if extract:
+                    self.extract_variables(extract, response_json)
+
                 if success_condition:
                     if self.evaluate_success_condition(success_condition, response_json):
                         print(f"{Fore.GREEN}Success condition met for {step_name}.{Style.RESET_ALL}")
-                        if extract:
-                            self.extract_variables(extract, response_json)
                         if print_output:
                             self.print_outputs(print_output, response_json, body or {})
                         return response
                     else:
                         retry_msg = "Condition not satisfied"
                         if isinstance(success_condition, dict) and 'message' in success_condition:
-                            retry_msg = success_condition.get("message", retry_msg)
+                            retry_msg = self.render_template(success_condition.get("message", retry_msg))
                         print(f"{step_name} - Attempt {attempt} failed: {retry_msg} | Remaining: {remaining} | Next retry in {retry_delay}s")
                         raise Exception("Condition not satisfied")
                 else:
-                    if extract:
-                        self.extract_variables(extract, response_json)
                     if print_output:
                         self.print_outputs(print_output, response_json, body or {})
                     return response
