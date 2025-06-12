@@ -42,6 +42,8 @@ class APIRunner:
             return f.read()
 
     def evaluate_success_condition(self, condition, response_json):
+        failed_messages = []
+
         def evaluate(single_condition):
             value = self.get_nested_value(response_json, single_condition['path'])
             result = False
@@ -54,16 +56,25 @@ class APIRunner:
                 result = single_condition['not_exists'] == (value is None)
 
             if not result and 'message' in single_condition:
-                print(f"[Condition Failed] {single_condition['message']}")
+                failed_messages.append(single_condition['message'])
             return result
 
         if isinstance(condition, dict) and 'conditions' in condition:
             logic = condition.get('logic', 'AND').upper()
             conditions = condition['conditions']
             results = [evaluate(c) for c in conditions]
-            return all(results) if logic == 'AND' else any(results)
+            if not (all(results) if logic == 'AND' else any(results)):
+                for msg in failed_messages:
+                    print(f"[Condition Failed] {msg}")
+                return False
+            return True
         elif isinstance(condition, list):
-            return all(evaluate(c) for c in condition)
+            results = [evaluate(c) for c in condition]
+            if not all(results):
+                for msg in failed_messages:
+                    print(f"[Condition Failed] {msg}")
+                return False
+            return True
         else:
             return evaluate(condition)
 
@@ -189,7 +200,7 @@ class APIRunner:
                         return response
                     else:
                         retry_msg = "Condition not satisfied"
-                        if isinstance(success_condition, dict):
+                        if isinstance(success_condition, dict) and 'message' in success_condition:
                             retry_msg = success_condition.get("message", retry_msg)
                         print(f"{step_name} - Attempt {attempt} failed: {retry_msg} | Remaining: {remaining} | Next retry in {retry_delay}s")
                         raise Exception("Condition not satisfied")
