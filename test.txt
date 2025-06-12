@@ -208,13 +208,20 @@ class APIRunner:
                 rendered_body = self.render_template(template_str)
                 body = json.loads(rendered_body)
 
+            auth = None
+            if 'auth' in step and step['auth'].get('type') == 'basic':
+                username = self.render_template(step['auth'].get('username', ''))
+                password = self.render_template(step['auth'].get('password', ''))
+                auth = (username, password)
+
             try:
                 response = requests.request(
                     method,
                     url,
                     headers=headers,
                     json=body,
-                    timeout=timeout
+                    timeout=timeout,
+                    auth=auth
                 )
                 response.raise_for_status()
                 response_json = response.json()
