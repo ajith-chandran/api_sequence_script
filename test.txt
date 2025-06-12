@@ -144,6 +144,15 @@ class APIRunner:
             message = message_template.replace("{{value}}", colored_value)
             print(message)
 
+    def interruptible_sleep(self, duration):
+        waited = 0
+        interval = 0.2
+        while waited < duration:
+            if self.skip_retry_flag:
+                break
+            time.sleep(interval)
+            waited += interval
+
     def make_request(self, step_name):
         step = self.config['api_calls'][step_name]
         system = step.get('system')
@@ -242,8 +251,7 @@ class APIRunner:
                     else:
                         break
 
-            print(f"Waiting {retry_delay} seconds before retrying...")
-            time.sleep(retry_delay)
+            self.interruptible_sleep(retry_delay)
 
     def run(self):
         sequence = self.config['sequences'][self.sequence_name]
