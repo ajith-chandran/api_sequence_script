@@ -188,7 +188,14 @@ class APIRunner:
     def run(self):
         sequence = self.config['sequences'][self.sequence_name]
         for step_name in sequence:
-            self.make_request(step_name)
+            try:
+                self.make_request(step_name)
+            except Exception as e:
+                print(f"Step {step_name} failed: {e}")
+                step_config = self.config['api_calls'].get(step_name, {})
+                if not step_config.get("proceed_on_failure", False):
+                    print("Halting execution due to failure.")
+                    break
 
 
 if __name__ == "__main__":
