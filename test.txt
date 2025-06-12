@@ -42,19 +42,30 @@ class APIRunner:
             return f.read()
 
     def evaluate_success_condition(self, condition, response_json):
-        value = self.get_nested_value(response_json, condition['path'])
-        result = False
-        if 'equals' in condition:
-            expected = self.render_template(condition['equals'])
-            result = str(value) == expected
-        elif 'exists' in condition:
-            result = condition['exists'] == (value is not None)
-        elif 'not_exists' in condition:
-            result = condition['not_exists'] == (value is None)
+        def evaluate(single_condition):
+            value = self.get_nested_value(response_json, single_condition['path'])
+            result = False
+            if 'equals' in single_condition:
+                expected = self.render_template(single_condition['equals'])
+                result = str(value) == expected
+            elif 'exists' in single_condition:
+                result = single_condition['exists'] == (value is not None)
+            elif 'not_exists' in single_condition:
+                result = single_condition['not_exists'] == (value is None)
 
-        if not result and 'message' in condition:
-            print(f"[Condition Failed] {condition['message']}")
-        return result
+            if not result and 'message' in single_condition:
+                print(f"[Condition Failed] {single_condition['message']}")
+            return result
+
+        if isinstance(condition, dict) and 'conditions' in condition:
+            logic = condition.get('logic', 'AND').upper()
+            conditions = condition['conditions']
+            results = [evaluate(c) for c in conditions]
+            return all(results) if logic == 'AND' else any(results)
+        elif isinstance(condition, list):
+            return all(evaluate(c) for c in condition)
+        else:
+            return evaluate(condition)
 
     def generate_value(self, spec):
         if spec['type'] == 'pattern':
@@ -177,7 +188,9 @@ class APIRunner:
                             self.print_outputs(print_output, response_json, body or {})
                         return response
                     else:
-                        retry_msg = success_condition.get("message", "Condition not satisfied")
+                        retry_msg = "Condition not satisfied"
+                        if isinstance(success_condition, dict):
+                            retry_msg = success_condition.get("message", retry_msg)
                         print(f"{step_name} - Attempt {attempt} failed: {retry_msg} | Remaining: {remaining} | Next retry in {retry_delay}s")
                         raise Exception("Condition not satisfied")
                 else:
