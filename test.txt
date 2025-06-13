@@ -41,12 +41,27 @@ class APIRunner:
         return template.render(**self.variables)
 
     def extract_variables(self, extract_config, response_json):
-        for var_name, path in extract_config.items():
-            value = self.get_nested_value(response_json, path)
+        for var_name, rule in extract_config.items():
+            if isinstance(rule, str):
+                value = self.get_nested_value(response_json, rule)
+            elif isinstance(rule, dict) and 'from' in rule and 'match' in rule and 'select' in rule:
+                array_data = self.get_nested_value(response_json, rule['from'])
+                value = None
+                if isinstance(array_data, list):
+                    for item in array_data:
+                        match_field, match_value = list(rule['match'].items())[0]
+                        if item.get(match_field) == match_value:
+                            value = item.get(rule['select'])
+                            break
+                else:
+                    value = None
+            else:
+                value = None
+
             if value is not None:
                 self.variables[var_name] = value
             else:
-                print(f"Warning: Could not extract {var_name} from path {path}")
+                print(f"Warning: Could not extract {var_name} using rule {rule}")
 
     def load_template(self, template_path):
         full_path = os.path.join(self.base_dir, template_path)
