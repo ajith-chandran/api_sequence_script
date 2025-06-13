@@ -175,6 +175,39 @@ class APIRunner:
             time.sleep(interval)
             waited += interval
 
+    def print_final_summary(self):
+        highlight_keys = self.config.get('final_output_keys', [])
+        if not highlight_keys:
+            return
+
+        print(f"\n{Fore.YELLOW}Final Extracted/Environment Variables:{Style.RESET_ALL}")
+        lines = []
+        for entry in highlight_keys:
+            if isinstance(entry, dict):
+                key = entry.get("key")
+                label = entry.get("label", key)
+            else:
+                key = entry
+                label = key
+            value = self.variables.get(key, '')
+            colored = f"{label}: {Fore.GREEN}{value}{Style.RESET_ALL}"
+            print(colored)
+            lines.append(f"{label}: {value}")
+
+        try:
+            output_dir = os.path.join(self.base_dir, 'output')
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, 'order-details.txt')
+
+            with open(output_path, 'a', encoding='utf-8') as f:
+                f.write("\n" + "-" * 50 + "\n")
+                f.write("\n".join(lines) + "\n")
+
+            print(f"{Fore.CYAN}Saved final values to {output_path}{Style.RESET_ALL}")
+
+        except Exception as e:
+            print(f"{Fore.RED}Failed to write output file: {e}{Style.RESET_ALL}")
+
     def make_request(self, step_name):
         step = self.config['api_calls'][step_name]
         system = step.get('system')
@@ -309,27 +342,6 @@ class APIRunner:
                         break
 
             self.interruptible_sleep(retry_delay)
-
-    def print_final_summary(self):
-        highlight_keys = self.config.get('final_output_keys', [])
-        if not highlight_keys:
-            return
-
-        print(f"\n{Fore.YELLOW}Final Extracted/Environment Variables:{Style.RESET_ALL}")
-        lines = []
-        for key in highlight_keys:
-            value = self.variables.get(key, '')
-            colored = f"{key}: {Fore.GREEN}{value}{Style.RESET_ALL}"
-            print(colored)
-            lines.append(f"{key}: {value}")
-
-        output_dir = os.path.join(self.base_dir, 'output')
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, 'order-details.txt')
-
-        with open(output_path, 'a') as f:
-            f.write("\n" + "-" * 50 + "\n")
-            f.write("\n".join(lines) + "\n")
 
     def run(self):
         sequence = self.config['sequences'][self.sequence_name]
