@@ -204,11 +204,6 @@ class APIRunner:
             url = base_url + endpoint_template
             headers = json.loads(self.render_template(json.dumps(step.get('headers', {}))))
 
-            # Automatically add Host header if not already set
-            parsed_url = urlparse(base_url)
-            if 'host' not in {k.lower(): k for k in headers}.keys():
-                headers['Host'] = parsed_url.netloc
-
             body = None
             if template_path:
                 template_str = self.load_template(template_path)
