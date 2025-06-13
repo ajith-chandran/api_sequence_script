@@ -174,10 +174,12 @@ class APIRunner:
         timeout = step.get('timeout', 10)
         duration_limit = step.get('duration_limit', 300)
         retry_delay = step.get('retry_delay', 2)
-        retries = step.get('retries')  # Optional
+        retries = step.get('retries')
         success_condition = step.get('success_condition')
         print_output = step.get('print_output', [])
         method = step.get('method', 'GET').upper()
+
+        form_data = step.get('form_data')
 
         start_time = datetime.now()
         attempt = 0
@@ -224,15 +226,25 @@ class APIRunner:
                     print(f"Headers: {headers}")
                     if body:
                         print(f"Payload: {json.dumps(body, indent=2)}")
+                    elif form_data:
+                        print(f"Form Data: {json.dumps(form_data, indent=2)}")
 
-                response = requests.request(
-                    method,
-                    url,
-                    headers=headers,
-                    json=body,
-                    timeout=timeout,
-                    auth=auth
-                )
+                request_kwargs = {
+                    'method': method,
+                    'url': url,
+                    'headers': headers,
+                    'timeout': timeout,
+                    'auth': auth
+                }
+
+                if form_data:
+                    request_kwargs['data'] = {
+                        k: self.render_template(str(v)) for k, v in form_data.items()
+                    }
+                elif body:
+                    request_kwargs['json'] = body
+
+                response = requests.request(**request_kwargs)
 
                 if self.verbosity >= 3:
                     print(f"{Fore.CYAN}--- Response: {step_name} ---{Style.RESET_ALL}")
