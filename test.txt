@@ -10,6 +10,7 @@ import threading
 from jinja2 import Template
 from datetime import datetime
 from colorama import Fore, Style, init as colorama_init
+from urllib.parse import urlparse
 
 colorama_init(autoreset=True)
 
@@ -202,6 +203,11 @@ class APIRunner:
             endpoint_template = self.render_template(step['endpoint'])
             url = base_url + endpoint_template
             headers = json.loads(self.render_template(json.dumps(step.get('headers', {}))))
+
+            # Automatically add Host header if not already set
+            parsed_url = urlparse(base_url)
+            if 'host' not in {k.lower(): k for k in headers}.keys():
+                headers['Host'] = parsed_url.netloc
 
             body = None
             if template_path:
