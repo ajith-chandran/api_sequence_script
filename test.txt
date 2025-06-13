@@ -72,7 +72,11 @@ class APIRunner:
         failed_messages = []
 
         def evaluate(single_condition):
-            value = self.get_nested_value(response_json, single_condition['path'])
+            if 'env_var' in single_condition:
+                value = self.variables.get(single_condition['env_var'])
+            else:
+                value = self.get_nested_value(response_json, single_condition['path'])
+
             result = False
             if 'equals' in single_condition:
                 expected = self.render_template(single_condition['equals'])
