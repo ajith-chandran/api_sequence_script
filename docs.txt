@@ -1,0 +1,224 @@
+API Configuration Documentation
+
+This document explains the structure and capabilities of the config.json used by the API automation script. It covers how to define and configure API calls, dynamic and extracted variables, environment-specific settings, retry logic, output formatting, and execution sequences.
+
+⸻
+
+1. File Structure
+	•	config.json: Main configuration file.
+	•	templates/: Folder for reusable JSON payload templates.
+	•	output/order-details.txt: Stores final key variable outputs from completed sequences.
+
+⸻
+
+2. Top-Level Configuration Keys
+
+env
+
+Define global environment variables accessible across templates.
+
+"env": {
+  "source": "abc",
+  "type": "new"
+}
+
+generators
+
+Define reusable value generation rules.
+
+"generators": {
+  "order_code": { "type": "pattern", "pattern": "##-##############" },
+  "alpha_key": { "type": "alphanumeric", "length": 26 }
+}
+
+	•	# for digits
+	•	@ for alphabets
+
+⸻
+
+3. Environments
+
+Each environment contains mappings for system-specific base URLs.
+
+"environments": {
+  "test2": {
+    "OC": "https://oc.test2.domain.com",
+    "OCE": "https://oce.test2.domain.com"
+  }
+}
+
+
+⸻
+
+4. API Calls (api_calls)
+
+Each API is defined with parameters like:
+
+"APA1": {
+  "system": "OC",
+  "method": "POST",
+  "endpoint": "/orders/{{ order_code }}",
+  "headers": { "Content-Type": "application/json" },
+  "template": "templates/order.json",
+  "dynamic_variables": {
+    "order_code": "order_code"
+  },
+  "extract": {
+    "order_id": "data.order.id",
+    "error_message": "error.message",
+    "browser_id": {
+      "from": "order.additionalDetails",
+      "match": { "code": "BROWSER_ID" },
+      "select": "value"
+    }
+  },
+  "success_condition": {
+    "conditions": [
+      { "path": "data.order.id", "exists": true },
+      { "env_var": "browser_id", "equals": "expected_browser" }
+    ],
+    "logic": "AND",
+    "message": "Expected browser ID to match. Extracted error: {{ error_message }}"
+  },
+  "print_output": [
+    { "message": "Order ID created: {{value}}", "env_var": "order_id" }
+  ],
+  "retries": 3,
+  "retry_delay": 10,
+  "timeout": 30,
+  "proceed_on_failure": false
+}
+
+Explanation:
+	•	system: Reference to environment-specific base URL.
+	•	method: HTTP method (GET, POST, etc.).
+	•	endpoint: Path with optional templating (e.g., {{ order_code }}).
+	•	headers: Headers for the API call.
+	•	template: Path to JSON payload template.
+	•	dynamic_variables: Assign generated values to be used in requests.
+	•	extract: Extract values from response using dot paths or conditional selectors.
+	•	success_condition: Logic for determining success (AND/OR/exists/equals/not_exists/env_var).
+	•	print_output: Customize console output per API step.
+	•	retries, retry_delay, timeout: Retry configuration.
+	•	proceed_on_failure: If true, continues even if this API fails.
+
+⸻
+
+5. Sequences
+
+Defines the order of API executions.
+
+"sequences": {
+  "sequence1": ["APA1", "APA2", "APA3"],
+  "sequence2": ["APA2", "APA1"]
+}
+
+Run with:
+
+python script.py sequence1 test2
+
+
+⸻
+
+6. Templating in Payloads
+
+Templates in template paths support Jinja syntax. You can insert:
+	•	Variables from env
+	•	Extracted variables from previous APIs
+	•	Dynamically generated values
+
+Example templates/order.json:
+
+{
+  "orderCode": "{{ order_code }}",
+  "type": "{{ type }}",
+  "source": "{{ source }}"
+}
+
+
+⸻
+
+7. Final Output Summary
+
+To display and log selected final values:
+
+"final_output_keys": [
+  { "key": "order_id", "label": "Order ID" },
+  { "key": "browser_id", "label": "Browser ID" },
+  { "key": "alpha_code", "label": "Alpha Code" }
+]
+
+	•	Will be printed to screen (green value highlighting)
+	•	Saved to output/order-details.txt
+
+⸻
+
+8. Special Features
+
+Skipping Retries:
+
+Press s and Enter during a retry wait to skip remaining retries (if proceed_on_failure = true).
+
+Success Conditions:
+
+Supports combining multiple conditions:
+
+"success_condition": {
+  "conditions": [
+    { "path": "status", "equals": "SUCCESS" },
+    { "path": "error", "not_exists": true }
+  ],
+  "logic": "AND",
+  "message": "Step failed, error: {{ error_message }}"
+}
+
+Verbose Logging:
+
+Run with flags:
+	•	-v: Basic logs
+	•	-vv: More info
+	•	-vvv: Full request/response dump
+
+⸻
+
+9. Form URL Encoded Data
+
+If form_data is used:
+
+"form_data": {
+  "username": "{{ user }}",
+  "password": "{{ password }}"
+}
+
+Sent using application/x-www-form-urlencoded content type.
+
+⸻
+
+10. Authentication
+
+Supports basic auth:
+
+"auth": {
+  "type": "basic",
+  "username": "{{ username }}",
+  "password": "{{ password }}"
+}
+
+
+⸻
+
+Summary
+	•	Use env, generators, and extract for dynamic and reusable values.
+	•	Use template and Jinja to customize payloads.
+	•	Organize execution with sequences.
+	•	Verify results using success_condition.
+	•	Print/save summaries using final_output_keys.
+	•	Control flow using retries, timeout, and proceed_on_failure.
+
+This configuration is designed to be reusable, modular, and extensible for a wide range of API automation scenarios.
+
+⸻
+
+Let the team update only config.json and templates — the Python script handles the logic and rendering automatically.
+
+Feel free to extend it with custom generators, output writers, or integration hooks as needed.
