@@ -14,7 +14,7 @@ from colorama import Fore, Style, init as colorama_init
 colorama_init(autoreset=True)
 
 class APIRunner:
-    def __init__(self, sequence_name, environment):
+    def __init__(self, sequence_name, environment, verbosity):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         config_path = os.path.join(base_dir, 'config.json')
         with open(config_path, 'r') as f:
@@ -26,6 +26,7 @@ class APIRunner:
         self.generators = self.config.get('generators', {})
         self.base_dir = base_dir
         self.skip_retry_flag = False
+        self.verbosity = verbosity
 
     def listen_for_skip(self):
         print("Press 's' then Enter at any time to skip retries for the current step.")
@@ -215,6 +216,14 @@ class APIRunner:
                 auth = (username, password)
 
             try:
+                if self.verbosity >= 3:
+                    print(f"\n{Fore.CYAN}--- Request: {step_name} ---{Style.RESET_ALL}")
+                    print(f"URL: {url}")
+                    print(f"Method: {method}")
+                    print(f"Headers: {headers}")
+                    if body:
+                        print(f"Payload: {json.dumps(body, indent=2)}")
+
                 response = requests.request(
                     method,
                     url,
@@ -225,6 +234,10 @@ class APIRunner:
                 )
                 response.raise_for_status()
                 response_json = response.json()
+
+                if self.verbosity >= 3:
+                    print(f"{Fore.CYAN}--- Response: {step_name} ---{Style.RESET_ALL}")
+                    print(json.dumps(response_json, indent=2))
 
                 if extract:
                     self.extract_variables(extract, response_json)
@@ -277,7 +290,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run API sequence from config")
     parser.add_argument('sequence', help="Sequence name to execute")
     parser.add_argument('environment', help="Environment to use (e.g. test2, test3, QA2, QA3)")
+    parser.add_argument('-v', '--verbose', action='count', default=0, help="Increase verbosity level (-v, -vv, -vvv)")
     args = parser.parse_args()
 
-    runner = APIRunner(args.sequence, args.environment)
+    runner = APIRunner(args.sequence, args.environment, args.verbose)
     runner.run()
