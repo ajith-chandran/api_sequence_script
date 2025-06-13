@@ -310,6 +310,27 @@ class APIRunner:
 
             self.interruptible_sleep(retry_delay)
 
+    def print_final_summary(self):
+        highlight_keys = self.config.get('final_output_keys', [])
+        if not highlight_keys:
+            return
+
+        print(f"\n{Fore.YELLOW}Final Extracted/Environment Variables:{Style.RESET_ALL}")
+        lines = []
+        for key in highlight_keys:
+            value = self.variables.get(key, '')
+            colored = f"{key}: {Fore.GREEN}{value}{Style.RESET_ALL}"
+            print(colored)
+            lines.append(f"{key}: {value}")
+
+        output_dir = os.path.join(self.base_dir, 'output')
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, 'order-details.txt')
+
+        with open(output_path, 'a') as f:
+            f.write("\n" + "-" * 50 + "\n")
+            f.write("\n".join(lines) + "\n")
+
     def run(self):
         sequence = self.config['sequences'][self.sequence_name]
         for step_name in sequence:
@@ -320,8 +341,8 @@ class APIRunner:
                 step_config = self.config['api_calls'].get(step_name, {})
                 if not step_config.get("proceed_on_failure", False):
                     print("Halting execution due to failure.")
-                    break
-
+                    return
+        self.print_final_summary()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run API sequence from config")
