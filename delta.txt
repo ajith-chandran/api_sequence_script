@@ -37,18 +37,43 @@ class APIRunner:
             with open(self.log_path, 'a', encoding='utf-8') as f:
                 f.write(message + '\n')
 
+    def print_and_log(self, message):
+        print(message)
+        self.log_verbose(message)
+
     def listen_for_skip(self):
-        print("Press 's' then Enter at any time to skip retries for the current step.")
+        self.print_and_log("Press 's' then Enter at any time to skip retries for the current step.")
         while True:
             if sys.stdin.read(1).lower() == 's':
                 self.skip_retry_flag = True
                 break
 
-    def render_template(self, template_str):
-        template = Template(template_str)
-        return template.render(**self.variables)
+    # ... keep the rest of the class unchanged ...
 
-    # [TRUNCATED: The rest of the class methods remain unchanged, but you should call self.log_verbose(msg) wherever detailed logging is needed, such as before or after requests, showing headers, body, and response]
+    def make_request(self, step_name):
+        # ... inside your make_request logic ...
+                if self.verbosity >= 3:
+                    self.print_and_log(f"\n{Fore.CYAN}--- Request: {step_name} ---{Style.RESET_ALL}")
+                    self.print_and_log(f"URL: {url}")
+                    self.print_and_log(f"Method: {method}")
+                    self.print_and_log(f"Headers: {headers}")
+                    if body:
+                        body_str = json.dumps(body, indent=2)
+                        self.print_and_log(f"Payload: {body_str}")
+                    elif form_data:
+                        form_str = json.dumps(form_data, indent=2)
+                        self.print_and_log(f"Form Data: {form_str}")
+
+                # ...
+                if self.verbosity >= 3:
+                    self.print_and_log(f"{Fore.CYAN}--- Response: {step_name} ---{Style.RESET_ALL}")
+                    try:
+                        response_json = response.json()
+                        self.print_and_log(json.dumps(response_json, indent=2))
+                    except Exception:
+                        self.print_and_log(response.text)
+
+    # ... same for other prints inside success, failure, retry ...
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run API sequence from config")
