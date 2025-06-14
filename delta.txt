@@ -1,0 +1,61 @@
+import requests
+import time
+import json
+import os
+import argparse
+import random
+import string
+import sys
+import threading
+from jinja2 import Template
+from datetime import datetime
+from colorama import Fore, Style, init as colorama_init
+from urllib.parse import urlparse
+
+colorama_init(autoreset=True)
+
+class APIRunner:
+    def __init__(self, sequence_name, environment, verbosity):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, 'config.json')
+        with open(config_path, 'r') as f:
+            self.config = json.load(f)
+
+        self.sequence_name = sequence_name
+        self.environment = environment
+        self.variables = self.config.get('env', {}).copy()
+        self.generators = self.config.get('generators', {})
+        self.base_dir = base_dir
+        self.skip_retry_flag = False
+        self.verbosity = verbosity
+
+        self.log_path = os.path.join(self.base_dir, 'output', 'verbose.log')
+        os.makedirs(os.path.dirname(self.log_path), exist_ok=True)
+
+    def log_verbose(self, message):
+        if self.verbosity >= 3:
+            with open(self.log_path, 'a', encoding='utf-8') as f:
+                f.write(message + '\n')
+
+    def listen_for_skip(self):
+        print("Press 's' then Enter at any time to skip retries for the current step.")
+        while True:
+            if sys.stdin.read(1).lower() == 's':
+                self.skip_retry_flag = True
+                break
+
+    def render_template(self, template_str):
+        template = Template(template_str)
+        return template.render(**self.variables)
+
+    # [TRUNCATED: The rest of the class methods remain unchanged, but you should call self.log_verbose(msg) wherever detailed logging is needed, such as before or after requests, showing headers, body, and response]
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run API sequence from config")
+    parser.add_argument('sequence', help="Sequence name to execute")
+    parser.add_argument('environment', help="Environment to use (e.g. test2, test3, QA2, QA3)")
+    parser.add_argument('-v', '--verbose', action='count', default=0, help="Increase verbosity level (-v, -vv, -vvv)")
+    args = parser.parse_args()
+
+    runner = APIRunner(args.sequence, args.environment, args.verbose)
+    runner.run()
